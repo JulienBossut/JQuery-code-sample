@@ -1,0 +1,337 @@
+<style>
+#contenu p:hover{
+	border:1px dashed black;
+	cursor:pointer;
+}
+
+#contenu img:hover{
+	cursor: pointer;
+}
+
+#contenu {margin: 0; padding: 0; width: 60%; }
+#contenu p {margin : 0; padding: 0 0 5px 3px; font-size: 1.4em; height: 18px; }
+
+#croix {
+    position:absolute;
+    display:none;
+    width:20px;
+}
+
+#contenu textarea {
+	resize:none;
+	width:100%;
+	display:block;
+	border:1px solid black;
+}
+</style>
+<link rel="stylesheet" href="Libs/jquery-ui.css">
+<script src="Libs/jquery-3.3.1.js"></script>
+<script src="Libs/jquery-ui.js"></script>
+<script>
+// Déclencher l'appel à init quand le navigateur est prêt
+/*
+$(document).ready(init);
+function init() {
+}
+*/
+
+// Penser à cloner les modèles avec .clone(true)
+// pour copier aussi leurs comportements 
+var jModeleP= $("<p>")
+				.html("Nouveau")
+    			.css({"display" : "inline",
+                        "float" : "left",
+                        "clear" : "left"
+    			})
+				.data({ id : -1,
+					ordre : 0,
+					contenu : "Nouveau"
+				});
+
+var jModeleSelect = $("<select>")
+    .css({"float":"left", "clear":"left"});
+
+var jModeleSubmit = $("<input type='button' value='Envoyer' id='submit'>")
+    .css({"float":"left", "clear":"left"});
+
+var jModeleOption = $("<option>");
+
+    $(document).on("click", "#submit", function(){
+        titre = $(this).prev().val();
+        console.log(titre);
+        console.log(this);
+        $(this).data("article", titre);
+
+        $( "p" ).remove();
+
+        $.getJSON("data.php", {action : "getPA", article : titre},
+            function (oRep) {
+                var i;
+                var meta;
+                var nextP;
+                for(i = 0; i < oRep.articles.length; i++){
+                    meta = oRep.articles[i];
+                    nextP = jModeleP.clone(true)
+                        .html(meta.contenu)
+                        .data(meta);
+                    $("#contenu").append(nextP);
+                }
+
+
+            });
+    });
+
+
+$(function () {
+    $( "#contenu" ).disableSelection();
+    $("#contenu").sortable();
+});
+
+$(document).on( "sortdeactivate", function() {
+    var idP = $("#croix").data("relatedP");
+    var ordre = $("#croix").data("ordreP");
+    var articleP = $("#submit").data("article");
+    var nextOrdre = 0;
+    var arrayP = document.getElementsByTagName("p");
+    var i = 0;
+    while (ordre != $(arrayP[i]).data("ordre")){
+        nextOrdre = $(arrayP[i]).data("ordre");
+        i++;
+    }
+    console.log(nextOrdre);
+    $.getJSON("data.php", {action:"updateOrdre" , id : idP, ordre : nextOrdre, article : articleP},
+        function (oRep){});
+    $.getJSON("data.php", {action:"updateMetaDatas", article : articleP}, function (oRep) {
+        for(var i = 0; i< oRep.ordre.length ; i++ ){
+            $(arrayP[i]).data("ordre", oRep.ordre[i].ordre);
+        }
+    });
+} );
+
+
+/* SOLUTION 1 
+				.click(function(){
+	// Récupérer le contenu actuel
+	var contenu = $(this).html() ;
+	// Préparer un textarea avec ce même contenu
+	var nextTA = jModeleTA.clone(true).val(contenu); 
+	// Insérer le textarea à la place du P.
+	$(this).replaceWith(nextTA);
+	// prendre le focus et le sélectionner 
+	nextTA.focus().select();
+});
+*/
+
+var jModeleTA = $("<textarea>");
+
+
+// Afficher les méta données des éléments survolés 
+$(document).on("mouseover", "#contenu *", function(){
+    console.log($(this).data());
+    var pos = $(this).offset();
+    $("#croix").show().css({top:pos.top-10, left:pos.left+$(this).width()-10});
+    id= $(this).data("id");
+    ordre = $(this).data("ordre");
+    $("#croix").data("relatedP", id);
+    $("#croix").data("ordreP", ordre);
+});
+
+$(document).on("mouseout", "#contenu *", function(){
+    $("#croix").hide();
+});
+
+$(document).on("mouseover", "#croix", function(){
+    $("#croix").show();
+});
+
+$(document).on("click", "#croix", function () {
+    thisP = $(this).data("relatedP");
+    arrayP = document.getElementsByTagName("p");
+    console.log(arrayP);
+    for(var i=0; i < arrayP.length; i++){
+        if($(arrayP[i]).data("id") == thisP){
+            $(arrayP[i]).remove();
+        }
+    }
+    $.getJSON("data.php", {action : "delP",
+            id : thisP
+    },
+    function () {});
+});
+
+/*$.getJSON("data.php", {action:"getP"},
+    function(oRep){
+        if(oRep.feedback != "ok"){
+            alert("Erreur : reload");
+            return;
+        }
+        var meta;
+        var nextP;
+        //Parcourir les paragraphes pour les inserer dans la page
+        for(var i = 0; i<oRep.paragraphes.length; i++){
+            meta = oRep.paragraphes[i];
+            nextP = jModeleP.clone(true)
+                .html(meta.contenu)
+                .data(meta);
+            $("#contenu").append(nextP);
+        }
+    }
+);*/
+
+
+$(document).ready(function(){
+    // initialisation de la page
+
+    // Ajouter un bouton '+'
+    // Clicable
+
+
+    var menu = jModeleSelect.clone();
+    $.getJSON("data.php",
+        {	action:"getA"},
+        function (oRep){
+            var i;
+            if (oRep.feedback == "ok") {
+
+
+                for (i = 0; i < oRep.articles.length; i++) {
+                    // pr�parer le P. num�ro i
+                    meta = oRep.articles[i];
+                    nextO = jModeleOption.clone()	// structure
+                        .html(meta.article); // m�ta-donn�es
+
+                    // ins�rer le P. dans la page
+                    menu.append(nextO);
+                }
+            }
+        });
+    nextS = jModeleSubmit.clone(true);
+    $("#contenu").before(menu);
+    $("#contenu").before(nextS);
+
+
+    // composant Bouton Plus : <div><button><champ texte></div>
+    var jBP = $("<div>")
+        .data("position","haut")
+        .css({"float":"left", "clear":"left"})
+        .append(
+            $("<button>")
+                .html("+")
+                .click(function(){
+                    // Lire le contenu du champ teexte
+                    // Bouton cliSeecondequé :Second $(tehis)
+                    // Champ texte : $(this).next()
+                    // Son contenu : $(tehis).next().val()
+                    var contenu = $(this).next().val();
+                    var article = $("#submit").data("article");
+                    console.log(article);
+                    // Préparer un nouveau P.
+                    var nextP = jModeleP.clone(true);
+                    if (contenu) {
+                        nextP.html(contenu);
+                        nextP.data("contenu",contenu);
+                    }
+
+                    console.log($(this).parent().data().position);
+                    // Insérer un nouveau P. dans la page
+                    if ($(this).parent().data().position == "haut") {
+                        first = $("#contenu *:first-child");
+                        if(first.length  && article){
+                            nextP.data("ordre", first.data("ordre") -1);
+                            nextP.data("article", article);
+                            $("#contenu").prepend(nextP);
+
+                        }
+
+
+                    }
+                    else {
+                        last = $("#contenu *:last-child");
+                        if(last.length && article){
+                            nextP.data("ordre", parseInt(last.data().ordre) +1);
+                            nextP.data("article", article);
+                            $("#contenu").append(nextP);
+
+                        }
+                    }
+                    console.log(article);
+                    if(article) {
+                        $.getJSON("data.php", {
+                            action: "addP",
+                            contenu: nextP.data("contenu"),
+                            article: $("#submit").data("article"),
+                            ordre: nextP.data("ordre")
+                        },
+                        function (oRep) {
+                            console.log("what");
+                            nextP.data("id", oRep.id);
+                        });
+                    }
+                })
+        )
+        .append($("<input type='text'>"));
+
+    $("#contenu").before(jBP.clone(true));
+    $("#contenu").after(jBP.clone(true).data("position","bas"));
+    // .clone(withDataAndEvents)
+
+
+
+});
+
+$(document).on("click", "#contenu p", function (){
+    var nextTA = jModeleTA.clone().val($(this).html()).data($(this).data());
+    $(this).replaceWith(nextTA);
+});
+
+$(document).on("keydown", "#contenu textarea", function (contexte){
+    if(contexte.which == 13){
+        $(this).data().contenu = $(this).val();
+        var nextP = jModeleP.clone().html($(this).val()).data($(this).data());
+        $(this).replaceWith(nextP);
+        $.getJSON("data.php", {action:"updateP",
+                id : nextP.data().id,
+                contenu : nextP.data().contenu
+            },
+            function(oRep){
+                if(oRep.feedback != "ok"){
+                    alert("FAIS CHIIIIIIIIIIIIIIIIIIER");
+                }
+            });
+    }
+    if(contexte.which == 27){
+        nextP = jModeleP.clone().html($(this).data().contenu).data($(this).data());
+        $(this).replaceWith(nextP);
+    }
+});
+
+
+
+
+
+
+
+
+</script>
+
+<body>
+<img src="ressources/croix.png" id="croix">
+<div id="contenu">
+</div>
+</body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
